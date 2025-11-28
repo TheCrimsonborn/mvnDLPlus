@@ -1,9 +1,48 @@
 /* Global Styles */
 QWidget {
-    background-color: #1e1e2e;
+    background-color: transparent;
     color: #cdd6f4;
     font-family: 'Segoe UI', sans-serif;
     font-size: 14px;
+}
+
+/* Main Container for Rounded Corners */
+QWidget#MainContainer {
+    background-color: #1e1e2e;
+    border-radius: 12px;
+    border: 1px solid #45475a;
+}
+
+/* Custom Title Bar */
+QWidget#CustomTitleBar {
+    background-color: #1e1e2e;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}
+
+QLabel#AppTitle {
+    font-weight: bold;
+    color: #89b4fa;
+    padding-left: 5px;
+}
+
+/* Title Bar Buttons */
+QPushButton#TitleBtn {
+    background-color: transparent;
+    border-radius: 15px;
+    color: #a6adc8;
+    font-size: 16px;
+    padding: 0;
+}
+
+QPushButton#TitleBtn:hover {
+    background-color: #313244;
+    color: #cdd6f4;
+}
+
+QPushButton#CloseBtn:hover {
+    background-color: #f38ba8;
+    color: #1e1e2e;
 }
 
 /* Input Fields */

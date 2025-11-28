@@ -3,8 +3,8 @@ import sys
 from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
                                QLabel, QLineEdit, QPushButton, QCheckBox, 
                                QProgressBar, QFileDialog, QMessageBox)
-from PySide6.QtCore import Qt, QThread, Signal, Slot
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, QThread, Signal, Slot, QPoint
+from PySide6.QtGui import QIcon, QMouseEvent
 
 from src.core.downloader import Downloader
 
@@ -40,11 +40,60 @@ class DownloadThread(QThread):
     def cancel(self):
         self.downloader.cancel()
 
+class CustomTitleBar(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent = parent
+        self.setFixedHeight(40)
+        self.layout = QHBoxLayout(self)
+        self.layout.setContentsMargins(10, 0, 10, 0)
+        self.layout.setSpacing(10)
+
+        # Title
+        self.title_label = QLabel("mvnDLPlus")
+        self.title_label.setObjectName("AppTitle")
+        self.layout.addWidget(self.title_label)
+        self.layout.addStretch()
+
+        # Buttons
+        self.min_btn = QPushButton("-")
+        self.min_btn.setObjectName("TitleBtn")
+        self.min_btn.setFixedSize(30, 30)
+        self.min_btn.clicked.connect(self.minimize_window)
+        self.layout.addWidget(self.min_btn)
+
+        self.close_btn = QPushButton("X")
+        self.close_btn.setObjectName("TitleBtn")
+        self.close_btn.setObjectName("CloseBtn") # Override for red color
+        self.close_btn.setFixedSize(30, 30)
+        self.close_btn.clicked.connect(self.close_window)
+        self.layout.addWidget(self.close_btn)
+
+        # Drag logic
+        self.start_pos = None
+
+    def minimize_window(self):
+        self.parent.showMinimized()
+
+    def close_window(self):
+        self.parent.close()
+
+    def mousePressEvent(self, event: QMouseEvent):
+        if event.button() == Qt.LeftButton:
+            self.start_pos = event.globalPos() - self.parent.frameGeometry().topLeft()
+            event.accept()
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        if event.buttons() == Qt.LeftButton and self.start_pos:
+            self.parent.move(event.globalPos() - self.start_pos)
+            event.accept()
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("mvnDLPlus")
-        self.resize(600, 400)
+        self.setWindowFlags(Qt.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.resize(600, 450)
         
         # Load Stylesheet
         try:
@@ -57,18 +106,32 @@ class MainWindow(QMainWindow):
         self.download_thread = None
 
     def setup_ui(self):
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
+        # Main Container Widget (Rounded corners)
+        self.main_container = QWidget()
+        self.main_container.setObjectName("MainContainer")
+        self.setCentralWidget(self.main_container)
         
-        layout = QVBoxLayout(central_widget)
-        layout.setSpacing(20)
-        layout.setContentsMargins(40, 40, 40, 40)
+        main_layout = QVBoxLayout(self.main_container)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
-        # Title
+        # Custom Title Bar
+        self.title_bar = CustomTitleBar(self)
+        main_layout.addWidget(self.title_bar)
+
+        # Content Area
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setSpacing(20)
+        content_layout.setContentsMargins(40, 20, 40, 40)
+        
+        main_layout.addWidget(content_widget)
+
+        # Title (In content area, maybe redundant now? Let's keep it as a header)
         title_label = QLabel("mvnDLPlus")
         title_label.setObjectName("TitleLabel")
         title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
+        content_layout.addWidget(title_label)
 
         # Inputs
         input_layout = QVBoxLayout()
@@ -78,31 +141,33 @@ class MainWindow(QMainWindow):
         self.url_input.setPlaceholderText("Paste Link Here...")
         input_layout.addWidget(self.url_input)
         
+        content_layout.addLayout(input_layout)
+        
         # self.version_input = QLineEdit()
         # self.version_input.setPlaceholderText("Version (e.g., 1.0.0) [Optional]")
         # input_layout.addWidget(self.version_input)
         
-        layout.addLayout(input_layout)
+        # layout.addLayout(input_layout)
 
         # Options
         options_layout = QHBoxLayout()
         self.ssl_checkbox = QCheckBox("Bypass SSL Verification")
         options_layout.addWidget(self.ssl_checkbox)
         options_layout.addStretch()
-        layout.addLayout(options_layout)
+        content_layout.addLayout(options_layout)
 
         # Progress
         self.progress_bar = QProgressBar()
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(False)
         self.progress_bar.setFixedHeight(10)
-        layout.addWidget(self.progress_bar)
+        content_layout.addWidget(self.progress_bar)
 
         # Status
         self.status_label = QLabel("Ready")
         self.status_label.setObjectName("StatusLabel")
         self.status_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.status_label)
+        content_layout.addWidget(self.status_label)
 
         # Buttons
         button_layout = QHBoxLayout()
@@ -111,8 +176,8 @@ class MainWindow(QMainWindow):
         self.download_btn.clicked.connect(self.start_download)
         button_layout.addWidget(self.download_btn)
         
-        layout.addLayout(button_layout)
-        layout.addStretch()
+        content_layout.addLayout(button_layout)
+        content_layout.addStretch()
 
     def start_download(self):
         raw_url = self.url_input.text().strip()
